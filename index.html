@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simon - Grid Memory</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700;900&display=swap');
+
+        /* Color Palette: High-Contrast and Modern */
+        :root {
+            --bg-dark: #121212; 
+            --container-bg: #212121;
+            --pad-green: #4CAF50;
+            --pad-red: #F44336;
+            --pad-yellow: #FFEB3B;
+            --pad-blue: #2196F3;
+            --text-light: #E0E0E0;
+            --accent-color: #03A9F4;
+            --border-radius: 8px;
+            --win-color: #FFC107;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: var(--bg-dark);
+            font-family: 'Roboto Mono', monospace;
+            color: var(--text-light);
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .game {
+            display: flex;
+            flex-direction: column; /* Stack children vertically */
+            align-items: center;
+            text-align: center;
+            padding: 30px; /* Reduced padding slightly */
+            background: var(--container-bg);
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), 
+                        0 0 0 2px var(--accent-color) inset;
+            border: 1px solid #333;
+            /* Removed 3D tilt (rotateX) for better structure integrity */
+            transition: box-shadow 0.3s ease;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 2em;
+            margin-bottom: 25px;
+            color: var(--accent-color);
+            text-shadow: 0 0 10px rgba(3, 169, 244, 0.5);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Rules & How to Play Panel */
+        .rules-panel {
+            background: #2b2b2b;
+            padding: 10px 20px; /* Reduced padding */
+            border-radius: var(--border-radius);
+            margin-bottom: 25px;
+            text-align: left;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            border-left: 5px solid var(--pad-green);
+            max-width: 400px; /* Keep rules panel contained */
+        }
+
+        .rules-panel h2 {
+            font-size: 1em;
+            color: var(--pad-green);
+            margin-top: 0;
+            text-transform: uppercase;
+        }
+        .rules-panel ul {
+            list-style: none;
+            padding: 0;
+            margin: 5px 0 0 0;
+            font-size: 0.8em; /* Smaller font for rules */
+        }
+        .rules-panel li {
+            margin-bottom: 3px;
+            position: relative;
+            padding-left: 15px;
+        }
+        .rules-panel li::before {
+            content: '>';
+            position: absolute;
+            left: 0;
+            color: var(--accent-color);
+            font-weight: 700;
+        }
+
+        /* Board Container */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(2, 180px);
+            grid-template-rows: repeat(2, 180px);
+            gap: 15px; 
+            background: #2b2b2b;
+            padding: 10px;
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.4) inset;
+            position: relative; /* Crucial for absolute positioning of console */
+            margin-top: 0; /* Align board directly below the rules panel */
+        }
+
+        /* Central Score/Status Panel - Positioning is now relative to the board */
+        .display-console {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            /* This centers it perfectly inside the board container */
+            transform: translate(-50%, -50%); 
+            width: 140px;
+            height: 140px;
+            background: #000;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.8) inset;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 6; 
+            border: 6px solid var(--container-bg);
+            padding: 10px;
+        }
+
+        #level {
+            font-size: 2.5em;
+            font-weight: 900;
+            color: var(--text-light);
+            margin: 5px 0;
+            line-height: 1;
+        }
+
+        #status {
+            font-size: 0.75em;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-color);
+            min-height: 15px;
+            padding-bottom: 5px;
+        }
+
+        .pad {
+            width: 180px;
+            height: 180px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            transition: transform 0.1s ease-out, box-shadow 0.1s ease-out, filter 0.1s ease-out;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            opacity: 0.7;
+            pointer-events: all;
+        }
+
+        /* Pad Colors, Hover, Active remain the same */
+        .green { background: var(--pad-green); }
+        .red { background: var(--pad-red); }
+        .yellow { background: var(--pad-yellow); }
+        .blue { background: var(--pad-blue); }
+
+        .pad:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(0, 0, 0, 0.7); }
+
+        .pad.active { opacity: 1; transform: scale(0.98); filter: brightness(1.2); box-shadow: 0 0 20px, 0 0 40px; }
+        .green.active { box-shadow: 0 0 20px var(--pad-green), 0 0 40px var(--pad-green); }
+        .red.active { box-shadow: 0 0 20px var(--pad-red), 0 0 40px var(--pad-red); }
+        .yellow.active { box-shadow: 0 0 20px var(--pad-yellow), 0 0 40px var(--pad-yellow); }
+        .blue.active { box-shadow: 0 0 20px var(--pad-blue), 0 0 40px var(--pad-blue); }
+
+        /* Victory Screen Style */
+        .victory-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(18, 18, 18, 0.95); border-radius: 12px; z-index: 20;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            color: var(--win-color); text-shadow: 0 0 15px var(--win-color);
+            animation: fadeIn 0.8s forwards;
+        }
+        .victory-screen h2 { font-size: 3em; margin-bottom: 10px; animation: pulse 1.5s infinite alternate; }
+        .victory-screen p { font-size: 1.2em; color: var(--text-light); text-shadow: none; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
+
+        .flash-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 0, 0, 0.8); border-radius: 50%; z-index: 10;
+            display: none; opacity: 0; transition: opacity 0.1s;
+        }
+        .flash-overlay.active { display: block; opacity: 1; }
+        .shake { animation: shake 0.5s; }
+        @keyframes shake {
+            /* Shake applied relative to normal position */
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(-10px, -5px); }
+            50% { transform: translate(10px, 5px); }
+            75% { transform: translate(-10px, -5px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h1>[ SIMON // CORE ]</h1>
+        
+        <div class="rules-panel">
+            <h2>System Protocol</h2>
+            <ul>
+                <li>Listen and **watch the sequence** played by the system.</li>
+                <li>When prompted, **repeat the entire sequence** by clicking the pads.</li>
+                <li>The sequence gets **one step longer** and slightly **faster** each level.</li>
+                <li>Complete **Level 10** to achieve **SYSTEM VICTORY**.</li>
+            </ul>
+        </div>
+
+        <div class="board" id="board">
+            <div class="pad green" data-color="green"></div>
+            <div class="pad red" data-color="red"></div>
+            <div class="pad yellow" data-color="yellow"></div>
+            <div class="pad blue" data-color="blue"></div>
+            <div class="flash-overlay" id="flash"></div>
+
+            <div class="display-console">
+                <p id="status">INIT</p>
+                <p id="level">0</p>
+            </div>
+        </div>
+
+        <div class="victory-screen" id="victoryScreen">
+            <h2>SYSTEM VICTORY!</h2>
+            <p>CONGRATULATIONS. YOU'VE CRACKED THE CODE.</p>
+        </div>
+    </div>
+    <script>
+        const pads = document.querySelectorAll('.pad');
+        const statusEl = document.getElementById('status');
+        const levelEl = document.getElementById('level');
+        const flashOverlay = document.getElementById('flash');
+        const boardEl = document.getElementById('board');
+        const victoryScreen = document.getElementById('victoryScreen');
+        const WIN_LEVEL = 10; // Target level for redirect
+
+        let sequence = [];
+        let playerSequence = [];
+        let level = 0;
+        let acceptingInput = false;
+        let gameStarted = false;
+
+        function checkWinCondition() {
+            if (level === WIN_LEVEL) {
+                gameOver(true); // Trigger Victory state
+                return true;
+            }
+            return false;
+        }
+
+        function nextLevel() {
+            if (checkWinCondition()) return;
+
+            level++;
+            levelEl.textContent = level;
+            playerSequence = [];
+            statusEl.textContent = 'SEQUENCE PLAY';
+            
+            const baseInterval = 750;
+            const speedFactor = Math.floor(level / 4) * 75;
+            const playInterval = Math.max(300, baseInterval - speedFactor);
+
+            const colors = ['green', 'red', 'yellow', 'blue'];
+            sequence.push(colors[Math.floor(Math.random() * 4)]);
+            
+            playSequence(playInterval);
+        }
+
+        function playSequence(interval) {
+            acceptingInput = false;
+            let i = 0;
+            const playTime = interval * 0.4;
+            const sequenceInterval = setInterval(() => {
+                const color = sequence[i];
+                activatePad(color, playTime);
+                i++;
+                if (i >= sequence.length) {
+                    clearInterval(sequenceInterval);
+                    setTimeout(() => {
+                        acceptingInput = true;
+                        statusEl.textContent = 'INPUT REQUIRED';
+                    }, 200);
+                }
+            }, interval);
+        }
+
+        function activatePad(color, duration = 100) {
+            const pad = document.querySelector(`.pad.${color}`);
+            pad.classList.add('active');
+            setTimeout(() => pad.classList.remove('active'), duration);
+        }
+
+        function checkInput(color) {
+            if (!acceptingInput) return;
+            playerSequence.push(color);
+            activatePad(color);
+
+            const index = playerSequence.length - 1;
+            if (playerSequence[index] !== sequence[index]) {
+                gameOver(false); 
+                return;
+            }
+
+            if (playerSequence.length === sequence.length) {
+                acceptingInput = false;
+                statusEl.textContent = 'CORRECT // WAIT';
+                setTimeout(nextLevel, 1500);
+            }
+        }
+
+        function gameOver(isVictory) {
+            acceptingInput = false;
+            gameStarted = false;
+
+            if (isVictory) {
+                statusEl.textContent = 'WIN CONDITION MET';
+                victoryScreen.style.display = 'flex';
+                
+                // 🏆 REDIRECT LOGIC ADDED HERE 🏆
+                setTimeout(() => {
+                    // **CHANGE 'victory.html' to your actual target page URL**
+                    window.location.href = 'quiz4.html'; 
+                }, 3000); // Wait 3 seconds to show the victory screen before redirecting
+                
+                return;
+            }
+            
+            // Handle Loss condition
+            flashOverlay.classList.add('active');
+            boardEl.classList.add('shake');
+            
+            statusEl.textContent = `ERROR // FAIL`;
+            levelEl.textContent = `L${level}`;
+
+            setTimeout(() => {
+                flashOverlay.classList.remove('active');
+                boardEl.classList.remove('shake');
+                
+                sequence = [];
+                playerSequence = [];
+                level = 0;
+                levelEl.textContent = `0`;
+                statusEl.textContent = 'PRESS TO START';
+            }, 1200);
+        }
+
+        pads.forEach(pad => {
+            pad.addEventListener('click', () => {
+                if (!gameStarted) {
+                    gameStarted = true;
+                    statusEl.textContent = 'LOADING...';
+                    setTimeout(nextLevel, 500);
+                } else {
+                    checkInput(pad.dataset.color);
+                }
+            });
+        });
+
+        window.onload = () => {
+            statusEl.textContent = 'PRESS TO START';
+        };
+    </script>
+</body>
+</html>
