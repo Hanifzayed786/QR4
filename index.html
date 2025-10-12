@@ -31,7 +31,6 @@ body {
   margin: 0;
   overflow: hidden;
   padding: 10px;
-  box-sizing: border-box;
 }
 
 .game {
@@ -59,7 +58,7 @@ h1 {
   text-transform: uppercase;
 }
 
-/* Rules panel */
+/* Rules */
 .rules-panel {
   background: #2b2b2b;
   padding: 10px 15px;
@@ -70,27 +69,23 @@ h1 {
   border-left: 5px solid var(--pad-green);
   width: 100%;
 }
-
 .rules-panel h2 {
   font-size: clamp(0.9em, 2.5vw, 1em);
   color: var(--pad-green);
   margin-top: 0;
   text-transform: uppercase;
 }
-
 .rules-panel ul {
   list-style: none;
   padding: 0;
   margin: 5px 0 0 0;
   font-size: clamp(0.7em, 2.5vw, 0.9em);
 }
-
 .rules-panel li {
   margin-bottom: 3px;
   position: relative;
   padding-left: 15px;
 }
-
 .rules-panel li::before {
   content: '>';
   position: absolute;
@@ -148,6 +143,28 @@ h1 {
   margin-bottom: 5px;
 }
 
+/* Start button */
+#startBtn {
+  margin-top: 5px;
+  padding: 8px 18px;
+  font-size: clamp(0.8em, 3vw, 1em);
+  color: var(--text-light);
+  background: none;
+  border: 2px solid var(--accent-color);
+  border-radius: 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 8px var(--accent-color);
+}
+#startBtn:hover, #startBtn:active {
+  background: var(--accent-color);
+  color: #000;
+  box-shadow: 0 0 15px var(--accent-color), 0 0 30px var(--accent-color);
+}
+
+/* Pads */
 .pad {
   border-radius: var(--border-radius);
   cursor: pointer;
@@ -155,20 +172,13 @@ h1 {
   opacity: 0.7;
   transition: all 0.15s ease;
 }
-
 .green { background: var(--pad-green); }
 .red { background: var(--pad-red); }
 .yellow { background: var(--pad-yellow); }
 .blue { background: var(--pad-blue); }
-
-.pad:hover { transform: scale(1.05); }
 .pad.active { opacity: 1; filter: brightness(1.2); }
-.green.active { box-shadow: 0 0 20px var(--pad-green); }
-.red.active { box-shadow: 0 0 20px var(--pad-red); }
-.yellow.active { box-shadow: 0 0 20px var(--pad-yellow); }
-.blue.active { box-shadow: 0 0 20px var(--pad-blue); }
 
-/* Victory screen */
+/* Victory */
 .victory-screen {
   position: absolute;
   inset: 0;
@@ -193,11 +203,10 @@ h1 {
   color: var(--text-light);
   text-shadow: none;
 }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
 
 .flash-overlay {
-  position: absolute; inset: 0;
+  position: absolute;
+  inset: 0;
   background: rgba(255, 0, 0, 0.8);
   border-radius: 50%;
   display: none;
@@ -213,8 +222,10 @@ h1 {
   50% { transform: translate(10px,5px); }
   75% { transform: translate(-10px,-5px); }
 }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
 
-/* Mobile adjustments */
+/* Mobile tweaks */
 @media (max-width: 480px) {
   .rules-panel { padding: 8px 10px; }
   .game { padding: 15px; }
@@ -232,7 +243,7 @@ h1 {
       <li>Watch the sequence shown by the system.</li>
       <li>Repeat the full sequence by clicking pads.</li>
       <li>The sequence grows longer and faster each level.</li>
-      <li>Complete Level 10 to archieve next challenge.</li>
+      <li>Complete Level 10 to move next challenge.</li>
     </ul>
   </div>
 
@@ -243,8 +254,9 @@ h1 {
     <div class="pad blue" data-color="blue"></div>
     <div class="flash-overlay" id="flash"></div>
     <div class="display-console">
-      <p id="status">INIT</p>
+      <p id="status">READY</p>
       <p id="level">0</p>
+      <button id="startBtn">START</button>
     </div>
   </div>
 
@@ -261,6 +273,7 @@ const levelEl = document.getElementById('level');
 const flashOverlay = document.getElementById('flash');
 const boardEl = document.getElementById('board');
 const victoryScreen = document.getElementById('victoryScreen');
+const startBtn = document.getElementById('startBtn');
 const WIN_LEVEL = 10;
 
 let sequence = [], playerSequence = [], level = 0, acceptingInput = false, gameStarted = false;
@@ -276,6 +289,7 @@ function nextLevel() {
   levelEl.textContent = level;
   playerSequence = [];
   statusEl.textContent = 'SEQUENCE PLAY';
+  startBtn.style.display = 'none';
 
   const baseInterval = 750;
   const speedFactor = Math.floor(level / 4) * 75;
@@ -335,20 +349,20 @@ function gameOver(isVictory) {
     flashOverlay.classList.remove('active');
     boardEl.classList.remove('shake');
     sequence = []; playerSequence = []; level = 0;
-    levelEl.textContent = `0`; statusEl.textContent = 'PRESS TO START';
+    levelEl.textContent = `0`; statusEl.textContent = 'READY';
+    startBtn.style.display = 'inline-block';
   }, 1200);
 }
 
-pads.forEach(pad=>{
-  pad.addEventListener('click', ()=>{
-    if (!gameStarted) {
-      gameStarted = true; statusEl.textContent = 'LOADING...';
-      setTimeout(nextLevel, 500);
-    } else checkInput(pad.dataset.color);
-  });
+pads.forEach(pad=>pad.addEventListener('click', ()=>{ checkInput(pad.dataset.color); }));
+startBtn.addEventListener('click', ()=>{
+  if (!gameStarted) {
+    gameStarted = true;
+    statusEl.textContent = 'LOADING...';
+    startBtn.style.display = 'none';
+    setTimeout(nextLevel, 500);
+  }
 });
-
-window.onload = ()=>{ statusEl.textContent = 'PRESS TO START'; };
 </script>
 </body>
 </html>
